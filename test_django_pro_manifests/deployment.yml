@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-django-pro
+  labels:
+    app: test-django-pro
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: test-django-pro
+  template:
+    metadata:
+      labels:
+        app: test-django-pro
+    spec:
+      containers:
+      - name: test-django-pro
+        image: beyons7/django-app:latest
+        ports:
+        - containerPort: 8080
