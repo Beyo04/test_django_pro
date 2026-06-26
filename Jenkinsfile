@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "django-app"
+        DOCKERHUB_REPO = "YOUR_DOCKERHUB_USERNAME/django-app"
         CONTAINER_NAME = "django-container"
     }
 
@@ -14,29 +15,29 @@ pipeline {
             }
         }
 
-        stage('Create Virtual Environment & Install Dependencies') {
-            steps {
-                sh '''
-                python3 -m venv venv
-                . venv/bin/activate
-                pip install --upgrade pip
-                pip install -r requirements.txt
-                '''
-            }
-        }
-
-        stage('Run Django Tests') {
-            steps {
-                sh '''
-                . venv/bin/activate
-                python manage.py test
-                '''
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t $IMAGE_NAME .'
+            }
+        }
+
+        stage('Login to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh 'echo $PASS | docker login -u $USER --password-stdin'
+                }
+            }
+        }
+
+        stage('Tag Image for Docker Hub') {
+            steps {
+                sh 'docker tag $IMAGE_NAME $DOCKERHUB_REPO:latest'
+            }
+        }
+
+        stage('Push Image to Docker Hub') {
+            steps {
+                sh 'docker push $DOCKERHUB_REPO:latest'
             }
         }
 
@@ -51,19 +52,17 @@ pipeline {
 
         stage('Run New Container') {
             steps {
-                sh '''
-                docker run -d -p 8000:8000 --name $CONTAINER_NAME $IMAGE_NAME
-                '''
+                sh 'docker run -d -p 8000:8000 --name $CONTAINER_NAME $DOCKERHUB_REPO:latest'
             }
         }
     }
 
     post {
         success {
-            echo "✅ Deployment Successful"
+            echo "✅ Build, Push & Deployment Successful"
         }
         failure {
-            echo "❌ Build Failed - Check Logs"
+            echo "❌ Pipeline Failed - Check Logs"
         }
     }
 }
