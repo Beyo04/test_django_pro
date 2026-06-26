@@ -16,6 +16,7 @@ pipeline {
                 . venv/bin/activate
                 pip install --upgrade pip
                 pip install -r requirements.txt
+                pip install pip-audit
                 '''
             }
         }
@@ -25,6 +26,24 @@ pipeline {
                 sh '''
                 . venv/bin/activate
                 python manage.py test
+                '''
+            }
+        }
+
+        stage('Security Scan') {
+            steps {
+                sh '''
+                . venv/bin/activate
+                pip-audit || true
+                '''
+            }
+        }
+
+        stage('Django Security Check') {
+            steps {
+                sh '''
+                . venv/bin/activate
+                python manage.py check --deploy
                 '''
             }
         }
