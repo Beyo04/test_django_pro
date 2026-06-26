@@ -1,41 +1,69 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "django-app"
+        CONTAINER_NAME = "django-container"
+    }
+
     stages {
 
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                git url: 'https://github.com/Beyo04/test_django_pro.git', branch: 'main'
+                git branch: 'main', url: 'https://github.com/Beyo04/test_django_pro.git'
             }
         }
 
-        stage('Setup Dependencies') {
+        stage('Create Virtual Environment & Install Dependencies') {
             steps {
-                sh 'python3 -m pip install --upgrade pip'
-                sh 'pip install -r requirements.txt'
+                sh '''
+                python3 -m venv venv
+                . venv/bin/activate
+                pip install --upgrade pip
+                pip install -r requirements.txt
+                '''
             }
         }
 
         stage('Run Django Tests') {
             steps {
-                sh 'python manage.py test'
+                sh '''
+                . venv/bin/activate
+                python manage.py test
+                '''
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t django-app .'
+                sh 'docker build -t $IMAGE_NAME .'
             }
         }
 
-        stage('Run Container') {
+        stage('Stop Old Container') {
             steps {
                 sh '''
-                docker stop django-app-container || true
-                docker rm django-app-container || true
-                docker run -d -p 8000:8000 --name django-app-container django-app
+                docker stop $CONTAINER_NAME || true
+                docker rm $CONTAINER_NAME || true
                 '''
             }
+        }
+
+        stage('Run New Container') {
+            steps {
+                sh '''
+                docker run -d -p 8000:8000 --name $CONTAINER_NAME $IMAGE_NAME
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Deployment Successful"
+        }
+        failure {
+            echo "❌ Build Failed - Check Logs"
         }
     }
 }
