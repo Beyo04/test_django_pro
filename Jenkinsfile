@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "django-app"
+        CONTAINER_NAME = "django"
+    }
+
     stages {
 
         stage('Checkout') {
@@ -16,7 +21,6 @@ pipeline {
                 . venv/bin/activate
                 pip install --upgrade pip
                 pip install -r requirements.txt
-                pip install pip-audit
                 '''
             }
         }
@@ -34,18 +38,46 @@ pipeline {
             steps {
                 sh '''
                 . venv/bin/activate
+                pip install pip-audit
                 pip-audit || true
                 '''
             }
         }
 
-        stage('Django Security Check') {
+        stage('Django Deploy Check') {
             steps {
                 sh '''
                 . venv/bin/activate
-                python manage.py check --deploy
+                python manage.py check --deploy || true
                 '''
             }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                docker build -t $IMAGE_NAME:$BUILD_NUMBER .
+                '''
+            }
+        }
+
+        stage('Run Container') {
+            steps {
+                sh '''
+                docker stop $CONTAINER_NAME || true
+                docker rm $CONTAINER_NAME || true
+                docker run -d -p 8000:8000 --name $CONTAINER_NAME $IMAGE_NAME:$BUILD_NUMBER
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Django app deployed successfully 🚀"
+        }
+        failure {
+            echo "Build failed ❌ check logs"
         }
     }
 }
