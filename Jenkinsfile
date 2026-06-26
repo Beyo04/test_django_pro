@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "django-app"
-        DOCKERHUB_REPO = "YOUR_DOCKERHUB_USERNAME/django-app"
+        DOCKERHUB_REPO = "beyons7/django-app"
         CONTAINER_NAME = "django-container"
     }
 
